@@ -230,26 +230,33 @@
   /* Banner "Radicación por documentador" (Documentación): SMP radicados y promedio de días por persona */
   .doc-rad-banner{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:14px 18px;
     margin:0 0 20px;box-shadow:var(--shadow);}
-  .doc-rad-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:10px;}
+  .doc-rad-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;width:100%;background:none;border:0;padding:0;
+    cursor:pointer;text-align:left;font-family:inherit;}
+  .doc-rad-head .chev{display:inline-block;width:12px;color:var(--text-muted);transition:transform .15s;}
+  .doc-rad-banner.open .doc-rad-head .chev{transform:rotate(90deg);}
   .doc-rad-head h4{margin:0;font-size:13.5px;color:var(--text-primary);}
   .doc-rad-sub{font-size:11.5px;color:var(--text-muted);}
+  .doc-rad-body{display:none;margin-top:12px;}
+  .doc-rad-banner.open .doc-rad-body{display:block;}
   .doc-rad-stats{display:flex;flex-wrap:wrap;gap:8px 28px;margin-bottom:12px;}
   .doc-rad-stat .lab{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;}
   .doc-rad-stat .val{font-size:22px;font-weight:800;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;}
-  .doc-rad-cols{display:grid;grid-template-columns:minmax(120px,190px) 1fr 1fr;gap:6px 14px;align-items:center;}
-  .doc-rad-colhead{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;}
-  .doc-rad-row{display:contents;cursor:pointer;}
-  .doc-rad-name{font-size:12.5px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .doc-rad-cell{display:flex;align-items:center;gap:8px;min-width:0;}
-  .doc-rad-track{flex:1;height:14px;background:var(--track);border-radius:7px;overflow:hidden;}
-  .doc-rad-fill{height:100%;border-radius:7px;}
-  .doc-rad-fill.n{background:var(--brand-navy);}
-  .doc-rad-fill.d{background:var(--brand-orange);}
-  .doc-rad-val{font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text-primary);min-width:64px;text-align:right;}
-  .doc-rad-row.dim .doc-rad-name, .doc-rad-row.dim .doc-rad-cell{opacity:.35;}
-  .doc-rad-row:hover .doc-rad-name{color:var(--brand-orange-ink);}
+  .doc-rad-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .doc-rad-chart{min-width:0;}
+  .doc-rad-scroll{overflow-x:auto;}
+  .doc-rad-colhead{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+  .doc-rad-svg{width:100%;min-width:420px;height:auto;display:block;}
+  .doc-rad-svg .grid{stroke:var(--border);stroke-width:1;}
+  .doc-rad-svg .axis,.doc-rad-svg .lbl{font-size:10px;fill:var(--text-muted);}
+  .doc-rad-svg .lbl{fill:var(--text-primary);}
+  .doc-rad-svg .val{font-size:10.5px;font-weight:700;fill:var(--text-primary);font-family:'IBM Plex Mono',monospace;}
+  .doc-rad-svg rect.n{fill:var(--brand-navy);} .doc-rad-svg rect.d{fill:var(--brand-orange);}
+  .doc-rad-svg .bar{cursor:pointer;} .doc-rad-svg .bar.dim{opacity:.3;}
+  .doc-rad-svg .bar:hover .lbl{fill:var(--brand-orange-ink);}
+  .doc-rad-svg .avg{stroke:#d92d20;stroke-width:1.6;stroke-dasharray:6 4;}
+  .doc-rad-svg .avgt{font-size:10.5px;font-weight:700;fill:#d92d20;}
   .doc-rad-empty{font-size:12.5px;color:var(--text-muted);padding:6px 0;}
-  @media (max-width:700px){ .doc-rad-cols{grid-template-columns:minmax(90px,130px) 1fr;} .doc-rad-cols .doc-rad-colhead:nth-child(3), .doc-rad-cols .doc-rad-cell.dias{display:none;} }
+  @media (max-width:900px){ .doc-rad-cols{grid-template-columns:1fr;} }
   .search-field{min-width:180px;}
   .search-field input{width:100%;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:9px;
     padding:7px 10px;font-size:12.5px;color:var(--text-primary);font-family:inherit;}
@@ -1114,12 +1121,15 @@
     <div class="ndpd-legend" id="docNdpdLegend"></div>
 
     <div class="doc-rad-banner" id="docRadBanner">
-      <div class="doc-rad-head">
+      <button type="button" class="doc-rad-head" id="docRadToggle" aria-expanded="false">
+        <span class="chev">▸</span>
         <h4>Radicación por documentador</h4>
-        <span class="doc-rad-sub">Días entre Integr. ACK y Fecha Radic. · SMP con ambas fechas · según los filtros de arriba (clic en un nombre para filtrar)</span>
+        <span class="doc-rad-sub" id="docRadResumen"></span>
+      </button>
+      <div class="doc-rad-body">
+        <div class="doc-rad-stats" id="docRadStats"></div>
+        <div class="doc-rad-cols" id="docRadBars"></div>
       </div>
-      <div class="doc-rad-stats" id="docRadStats"></div>
-      <div class="doc-rad-cols" id="docRadBars"></div>
     </div>
 
     <div class="doc-top-row">
@@ -2240,7 +2250,7 @@ const DOC_FECHA_ACTUAL = "2026-11-09T13:30:43";
 // assemble.py la inyecta aquí — mismo patrón que DOC/ONAIR/SO_FECHA_ACTUAL. Si el checkout nunca
 // corrió build_ndpd_data.py, el placeholder queda vacío y cae a null ("—" en pantalla) hasta que
 // alguien use "Actualizar NdPd" en el navegador (que sigue reasignándola, ver más abajo).
-let NDPD_FECHA_ACTUAL = "2026-11-09T16:44:18" || null;
+let NDPD_FECHA_ACTUAL = "2026-11-09T17:53:13" || null;
 const ONAIR_FECHA_ACTUAL = "2026-11-09T13:30:44";
 const SO_FECHA_ACTUAL = "2026-11-09T13:30:44";
 
@@ -3135,6 +3145,14 @@ docDocSelect.addEventListener('change', ()=>{ docState.selectedDocumentador = do
 // y en cuántos días en promedio (Fecha Radic. − Integr. ACK). Respeta todos los filtros de arriba menos
 // Estado (igual que los KPIs de promedio) y menos el propio documentador, para poder comparar a todos;
 // si hay un documentador elegido, los demás quedan atenuados y los totales son los suyos.
+(function(){
+  const ban = document.getElementById('docRadBanner');
+  const btn = document.getElementById('docRadToggle');
+  btn.addEventListener('click', ()=>{
+    const abierto = ban.classList.toggle('open');
+    btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+  });
+})();
 function docRenderRadBanner(){
   const MS = 86400000;
   const base = docFilteredRows({skipEstado:true, skipDocumentador:true})
@@ -3168,37 +3186,54 @@ function docRenderRadBanner(){
   stat('Promedio días de radicación', totalProm!==null ? totalProm.toFixed(1)+' d' : '—');
   stat('Documentadores', String(dentro.length));
 
+  const resumen = document.getElementById('docRadResumen');
+  if(resumen) resumen.textContent = totalN ? totalN.toLocaleString('es-CO')+' SMP · '+totalProm.toFixed(1)+' d de promedio' : 'sin datos';
+
   const cont = document.getElementById('docRadBars');
   cont.innerHTML = '';
   if(!lista.length){
-    const e = document.createElement('div'); e.className = 'doc-rad-empty'; e.style.gridColumn = '1 / -1';
+    const e = document.createElement('div'); e.className = 'doc-rad-empty';
     e.textContent = 'Ningún SMP de los filtros activos tiene Integr. ACK y Fecha Radic. a la vez.';
     cont.appendChild(e); return;
   }
-  ['Documentador','SMP radicados','Promedio días'].forEach((t,i)=>{
-    const h = document.createElement('div'); h.className = 'doc-rad-colhead' + (i===2 ? ' dias' : ''); h.textContent = t;
-    cont.appendChild(h);
-  });
-  const maxN = Math.max(...lista.map(x=>x.n));
-  const maxP = Math.max(...lista.map(x=>x.prom), 0.0001);
-  lista.forEach(x=>{
-    const row = document.createElement('div');
-    row.className = 'doc-rad-row' + (sel && x.nombre!==sel ? ' dim' : '');
-    const name = document.createElement('div'); name.className = 'doc-rad-name'; name.textContent = x.nombre; name.title = x.nombre;
-    const celda = (cls, ancho, texto)=>{
-      const c = document.createElement('div'); c.className = 'doc-rad-cell' + (cls==='d' ? ' dias' : '');
-      const t = document.createElement('div'); t.className = 'doc-rad-track';
-      const f = document.createElement('div'); f.className = 'doc-rad-fill '+cls; f.style.width = Math.max(ancho,2).toFixed(1)+'%';
-      t.appendChild(f);
-      const v = document.createElement('div'); v.className = 'doc-rad-val'; v.textContent = texto;
-      c.appendChild(t); c.appendChild(v); return c;
-    };
-    row.appendChild(name);
-    row.appendChild(celda('n', x.n/maxN*100, x.n.toLocaleString('es-CO')+' SMP'));
-    row.appendChild(celda('d', Math.max(x.prom,0)/maxP*100, x.prom.toFixed(1)+' d'));
-    row.addEventListener('click', ()=>{ docState.selectedDocumentador = sel===x.nombre ? null : x.nombre; docRender(); });
-    cont.appendChild(row);
-  });
+  const esc = t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+  // Gráfico de barras verticales por documentador con línea de promedio
+  const grafico = (titulo, valores, cls, fmt, promedio, etiquetaProm)=>{
+    const W = Math.max(420, 70*lista.length+70), H = 270, mL = 44, mR = 12, mT = 22, mB = 82;
+    const max = Math.max(...valores, promedio, 0.0001) * 1.12;
+    const iw = W-mL-mR, ih = H-mT-mB, paso = iw/lista.length, bw = Math.min(46, paso*0.62);
+    const y = v=> mT + ih - (v/max)*ih;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" class="doc-rad-svg" role="img" aria-label="${esc(titulo)}">`;
+    for(let i=0;i<=4;i++){
+      const v = max*i/4, yy = y(v);
+      svg += `<line x1="${mL}" x2="${W-mR}" y1="${yy}" y2="${yy}" class="grid"/>`+
+             `<text x="${mL-6}" y="${yy+3.5}" text-anchor="end" class="axis">${max>30 ? Math.round(v) : Math.round(v*10)/10}</text>`;
+    }
+    lista.forEach((x,i)=>{
+      const v = valores[i], cx = mL + paso*i + paso/2, yy = y(v);
+      const dim = sel && x.nombre!==sel ? ' dim' : '';
+      svg += `<g class="bar${dim}" data-n="${esc(x.nombre)}"><title>${esc(x.nombre)}: ${esc(fmt(v))}</title>`+
+        `<rect x="${cx-bw/2}" y="${yy}" width="${bw}" height="${Math.max(ih+mT-yy,1)}" rx="3" class="${cls}"/>`+
+        `<text x="${cx}" y="${yy-5}" text-anchor="middle" class="val">${esc(fmt(v))}</text>`+
+        `<text transform="translate(${cx},${mT+ih+12}) rotate(-35)" text-anchor="end" class="lbl">${esc(x.nombre.length>20 ? x.nombre.slice(0,19)+'…' : x.nombre)}</text></g>`;
+    });
+    const ya = y(promedio);
+    svg += `<line x1="${mL}" x2="${W-mR}" y1="${ya}" y2="${ya}" class="avg"/>`+
+           `<text x="${W-mR}" y="${ya-5}" text-anchor="end" class="avgt">${esc(etiquetaProm)}</text></svg>`;
+    const box = document.createElement('div'); box.className = 'doc-rad-chart';
+    box.innerHTML = `<div class="doc-rad-colhead">${esc(titulo)}</div><div class="doc-rad-scroll">${svg}</div>`;
+    box.querySelectorAll('.bar').forEach(g=>g.addEventListener('click', ()=>{
+      const n = g.getAttribute('data-n');
+      docState.selectedDocumentador = docState.selectedDocumentador===n ? null : n; docRender();
+    }));
+    return box;
+  };
+  const promN = lista.reduce((a,x)=>a+x.n,0)/lista.length;
+  const promD = lista.reduce((a,x)=>a+x.prom*x.n,0)/lista.reduce((a,x)=>a+x.n,0);
+  cont.appendChild(grafico('Cantidad de SMP radicados por documentador', lista.map(x=>x.n), 'n',
+    v=>v.toLocaleString('es-CO'), promN, 'Promedio '+promN.toFixed(1)));
+  cont.appendChild(grafico('Tiempo de radicación (días) por documentador', lista.map(x=>x.prom), 'd',
+    v=>v.toFixed(1)+' d', promD, 'Promedio '+promD.toFixed(1)+' d'));
 }
 
 document.getElementById('docFechaDesde').addEventListener('change', e=>{ docState.from = e.target.value || null; docRender(); });
