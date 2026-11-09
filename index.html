@@ -224,6 +224,32 @@
   .date-field{flex:1 1 0;}
   .date-field input{width:100%;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:9px;
     padding:6px 8px;font-size:12px;color:var(--text-primary);font-family:inherit;}
+  .doc-select{width:100%;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:9px;
+    padding:7px 10px;font-size:12.5px;color:var(--text-primary);font-family:inherit;cursor:pointer;}
+  .doc-select:focus{outline:none;border-color:var(--brand-orange);}
+  /* Banner "Radicación por documentador" (Documentación): SMP radicados y promedio de días por persona */
+  .doc-rad-banner{background:var(--surface-1);border:1px solid var(--border);border-radius:14px;padding:14px 18px;
+    margin:0 0 20px;box-shadow:var(--shadow);}
+  .doc-rad-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;margin-bottom:10px;}
+  .doc-rad-head h4{margin:0;font-size:13.5px;color:var(--text-primary);}
+  .doc-rad-sub{font-size:11.5px;color:var(--text-muted);}
+  .doc-rad-stats{display:flex;flex-wrap:wrap;gap:8px 28px;margin-bottom:12px;}
+  .doc-rad-stat .lab{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;}
+  .doc-rad-stat .val{font-size:22px;font-weight:800;color:var(--text-primary);font-family:'IBM Plex Mono',monospace;}
+  .doc-rad-cols{display:grid;grid-template-columns:minmax(120px,190px) 1fr 1fr;gap:6px 14px;align-items:center;}
+  .doc-rad-colhead{font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;}
+  .doc-rad-row{display:contents;cursor:pointer;}
+  .doc-rad-name{font-size:12.5px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .doc-rad-cell{display:flex;align-items:center;gap:8px;min-width:0;}
+  .doc-rad-track{flex:1;height:14px;background:var(--track);border-radius:7px;overflow:hidden;}
+  .doc-rad-fill{height:100%;border-radius:7px;}
+  .doc-rad-fill.n{background:var(--brand-navy);}
+  .doc-rad-fill.d{background:var(--brand-orange);}
+  .doc-rad-val{font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--text-primary);min-width:64px;text-align:right;}
+  .doc-rad-row.dim .doc-rad-name, .doc-rad-row.dim .doc-rad-cell{opacity:.35;}
+  .doc-rad-row:hover .doc-rad-name{color:var(--brand-orange-ink);}
+  .doc-rad-empty{font-size:12.5px;color:var(--text-muted);padding:6px 0;}
+  @media (max-width:700px){ .doc-rad-cols{grid-template-columns:minmax(90px,130px) 1fr;} .doc-rad-cols .doc-rad-colhead:nth-child(3), .doc-rad-cols .doc-rad-cell.dias{display:none;} }
   .search-field{min-width:180px;}
   .search-field input{width:100%;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:9px;
     padding:7px 10px;font-size:12.5px;color:var(--text-primary);font-family:inherit;}
@@ -1043,6 +1069,10 @@
           <button class="doc-rel-btn active" data-rel="H">H</button>
         </div>
       </div>
+      <div class="filter-field">
+        <label>Documentador</label>
+        <select class="doc-select" id="docDocSelect"></select>
+      </div>
       <div class="date-group">
         <label class="date-group-label">Fecha integración ACK</label>
         <div class="date-group-row">
@@ -1082,6 +1112,15 @@
         <div class="sub" id="docKpiNdpdFinSub">—</div></div>
     </div>
     <div class="ndpd-legend" id="docNdpdLegend"></div>
+
+    <div class="doc-rad-banner" id="docRadBanner">
+      <div class="doc-rad-head">
+        <h4>Radicación por documentador</h4>
+        <span class="doc-rad-sub">Días entre Integr. ACK y Fecha Radic. · SMP con ambas fechas · según los filtros de arriba (clic en un nombre para filtrar)</span>
+      </div>
+      <div class="doc-rad-stats" id="docRadStats"></div>
+      <div class="doc-rad-cols" id="docRadBars"></div>
+    </div>
 
     <div class="doc-top-row">
       <div class="mini-bar-card">
@@ -2201,7 +2240,7 @@ const DOC_FECHA_ACTUAL = "2026-11-09T13:30:43";
 // assemble.py la inyecta aquí — mismo patrón que DOC/ONAIR/SO_FECHA_ACTUAL. Si el checkout nunca
 // corrió build_ndpd_data.py, el placeholder queda vacío y cae a null ("—" en pantalla) hasta que
 // alguien use "Actualizar NdPd" en el navegador (que sigue reasignándola, ver más abajo).
-let NDPD_FECHA_ACTUAL = "2026-11-09T13:31:07" || null;
+let NDPD_FECHA_ACTUAL = "2026-11-09T16:44:18" || null;
 const ONAIR_FECHA_ACTUAL = "2026-11-09T13:30:44";
 const SO_FECHA_ACTUAL = "2026-11-09T13:30:44";
 
@@ -3080,6 +3119,88 @@ document.querySelectorAll('#doc-rel-toggle .doc-rel-btn').forEach(btn=>{
   });
 });
 
+// Filtro por documentador (el mismo estado que el clic en el círculo "Documentador Asignado")
+const docDocSelect = document.getElementById('docDocSelect');
+(function(){
+  const nombres = [...new Set(DOC_DATA.map(d=>d.documentador||'Sin asignar'))]
+    .sort((a,b)=> a==='Sin asignar' ? 1 : b==='Sin asignar' ? -1 : a.localeCompare(b,'es'));
+  docDocSelect.innerHTML = '';
+  const todos = document.createElement('option'); todos.value = ''; todos.textContent = 'Todos';
+  docDocSelect.appendChild(todos);
+  nombres.forEach(n=>{ const o = document.createElement('option'); o.value = n; o.textContent = n; docDocSelect.appendChild(o); });
+})();
+docDocSelect.addEventListener('change', ()=>{ docState.selectedDocumentador = docDocSelect.value || null; docRender(); });
+
+// Banner "Radicación por documentador": por persona, cuántos SMP radicó (con Integr. ACK y Fecha Radic.)
+// y en cuántos días en promedio (Fecha Radic. − Integr. ACK). Respeta todos los filtros de arriba menos
+// Estado (igual que los KPIs de promedio) y menos el propio documentador, para poder comparar a todos;
+// si hay un documentador elegido, los demás quedan atenuados y los totales son los suyos.
+function docRenderRadBanner(){
+  const MS = 86400000;
+  const base = docFilteredRows({skipEstado:true, skipDocumentador:true})
+    .filter(r=>r.integracionAck && r.fechaRad);
+  const porDoc = new Map();   // documentador -> Map(smp -> días)
+  base.forEach(r=>{
+    const k = r.documentador || 'Sin asignar';
+    const dias = Math.round((new Date(r.fechaRad+'T00:00:00') - new Date(r.integracionAck+'T00:00:00'))/MS);
+    if(!porDoc.has(k)) porDoc.set(k, new Map());
+    porDoc.get(k).set(r.smp || ('fila'+porDoc.get(k).size), dias);
+  });
+  const lista = [...porDoc.entries()].map(([nombre, m])=>{
+    const v = [...m.values()];
+    return { nombre, n: v.length, prom: v.reduce((a,b)=>a+b,0)/v.length };
+  }).sort((a,b)=> b.n - a.n || a.nombre.localeCompare(b.nombre,'es'));
+
+  const sel = docState.selectedDocumentador;
+  const dentro = sel ? lista.filter(x=>x.nombre===sel) : lista;
+  const totalN = dentro.reduce((a,x)=>a+x.n,0);
+  const totalProm = totalN ? dentro.reduce((a,x)=>a+x.prom*x.n,0)/totalN : null;
+
+  const stats = document.getElementById('docRadStats');
+  stats.innerHTML = '';
+  const stat = (lab, val)=>{
+    const d = document.createElement('div'); d.className = 'doc-rad-stat';
+    const l = document.createElement('div'); l.className = 'lab'; l.textContent = lab;
+    const v = document.createElement('div'); v.className = 'val'; v.textContent = val;
+    d.appendChild(l); d.appendChild(v); stats.appendChild(d);
+  };
+  stat(sel ? 'SMP radicados · '+sel : 'SMP radicados', totalN.toLocaleString('es-CO'));
+  stat('Promedio días de radicación', totalProm!==null ? totalProm.toFixed(1)+' d' : '—');
+  stat('Documentadores', String(dentro.length));
+
+  const cont = document.getElementById('docRadBars');
+  cont.innerHTML = '';
+  if(!lista.length){
+    const e = document.createElement('div'); e.className = 'doc-rad-empty'; e.style.gridColumn = '1 / -1';
+    e.textContent = 'Ningún SMP de los filtros activos tiene Integr. ACK y Fecha Radic. a la vez.';
+    cont.appendChild(e); return;
+  }
+  ['Documentador','SMP radicados','Promedio días'].forEach((t,i)=>{
+    const h = document.createElement('div'); h.className = 'doc-rad-colhead' + (i===2 ? ' dias' : ''); h.textContent = t;
+    cont.appendChild(h);
+  });
+  const maxN = Math.max(...lista.map(x=>x.n));
+  const maxP = Math.max(...lista.map(x=>x.prom), 0.0001);
+  lista.forEach(x=>{
+    const row = document.createElement('div');
+    row.className = 'doc-rad-row' + (sel && x.nombre!==sel ? ' dim' : '');
+    const name = document.createElement('div'); name.className = 'doc-rad-name'; name.textContent = x.nombre; name.title = x.nombre;
+    const celda = (cls, ancho, texto)=>{
+      const c = document.createElement('div'); c.className = 'doc-rad-cell' + (cls==='d' ? ' dias' : '');
+      const t = document.createElement('div'); t.className = 'doc-rad-track';
+      const f = document.createElement('div'); f.className = 'doc-rad-fill '+cls; f.style.width = Math.max(ancho,2).toFixed(1)+'%';
+      t.appendChild(f);
+      const v = document.createElement('div'); v.className = 'doc-rad-val'; v.textContent = texto;
+      c.appendChild(t); c.appendChild(v); return c;
+    };
+    row.appendChild(name);
+    row.appendChild(celda('n', x.n/maxN*100, x.n.toLocaleString('es-CO')+' SMP'));
+    row.appendChild(celda('d', Math.max(x.prom,0)/maxP*100, x.prom.toFixed(1)+' d'));
+    row.addEventListener('click', ()=>{ docState.selectedDocumentador = sel===x.nombre ? null : x.nombre; docRender(); });
+    cont.appendChild(row);
+  });
+}
+
 document.getElementById('docFechaDesde').addEventListener('change', e=>{ docState.from = e.target.value || null; docRender(); });
 document.getElementById('docFechaHasta').addEventListener('change', e=>{ docState.to = e.target.value || null; docRender(); });
 
@@ -3483,6 +3604,10 @@ function docRender(){
   const sinRadicarAging = sinRadicarRows.map(docAging).filter(v=>v!==null);
   const promSinRadicar = sinRadicarAging.length ? (sinRadicarAging.reduce((a,b)=>a+b,0)/sinRadicarAging.length) : null;
   document.getElementById('docKpiPromSinRadicar').textContent = promSinRadicar!==null ? promSinRadicar.toFixed(1)+' d' : '—';
+
+  // Filtro por documentador sincronizado con el estado (clic en el círculo, en el banner o en el select)
+  docDocSelect.value = docState.selectedDocumentador || '';
+  docRenderRadBanner();
 
   // KPIs NdPd — cierre de DOC_PRE / DOC_POST / DOC_FIN, cruzado por SMP desde el export NdPd
   // (build_ndpd_data.py). Universo: SMP en NDPD_ESTADOS, respetando los demás filtros activos de esta
