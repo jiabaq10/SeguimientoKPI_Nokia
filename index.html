@@ -2195,15 +2195,15 @@ let FECHA_PASADA = ackDataEl.dataset.fechaPasada;
 // pestaña "Vista Actual" del Comparativo Documentación — el resto del dashboard sigue leyendo
 // FECHA_ACTUAL/FECHA_PASADA sin cambios.
 let FECHA_LIVE = ackDataEl.dataset.fechaLive || FECHA_ACTUAL;
-const DOC_FECHA_ACTUAL = "2026-11-08T19:40:58";
+const DOC_FECHA_ACTUAL = "2026-11-09T01:23:30";
 // NDPD_FECHA_ACTUAL: desde 2026-09-12, build_ndpd_data.py escribe esta fecha en ndpd_meta.json
 // (propiedad "modified" del propio Excel NdPd, o la fecha de modificación en disco de respaldo) y
 // assemble.py la inyecta aquí — mismo patrón que DOC/ONAIR/SO_FECHA_ACTUAL. Si el checkout nunca
 // corrió build_ndpd_data.py, el placeholder queda vacío y cae a null ("—" en pantalla) hasta que
 // alguien use "Actualizar NdPd" en el navegador (que sigue reasignándola, ver más abajo).
-let NDPD_FECHA_ACTUAL = "2026-11-08T19:41:15" || null;
-const ONAIR_FECHA_ACTUAL = "2026-11-08T19:40:58";
-const SO_FECHA_ACTUAL = "2026-11-08T19:40:59";
+let NDPD_FECHA_ACTUAL = "2026-11-09T01:23:46" || null;
+const ONAIR_FECHA_ACTUAL = "2026-11-09T01:23:30";
+const SO_FECHA_ACTUAL = "2026-11-09T01:23:31";
 
 // Refleja NDPD_FECHA_ACTUAL en el encabezado de la propia vista "NdPd" (dashboard_body.html,
 // #ndpdHeaderFechaTxt) — a pedido de Jimmy 2026-09-12, antes solo se veía dentro del modal
